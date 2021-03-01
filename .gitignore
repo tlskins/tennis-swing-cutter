@@ -21,3 +21,5 @@ var/
 
 .vscode
 node_modules/
+inputs/
+out/
