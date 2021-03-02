@@ -22,7 +22,6 @@ functions:
     package:
       include:
         - video_cutter_handler.py
-        - contact_sound_detector.py
     events:
       - s3:
           bucket: ${self:custom.secrets.VIDEO_CUTTER_EVENT_BUCKET}
@@ -31,7 +30,7 @@ functions:
             - prefix: originals/
           existing: true
     destinations:
-      onSuccess: arn:aws:lambda:us-east-1:775992663949:function:tennis-community-api-service-dev-update_upload_clips
+      onSuccess: ${self:custom.secrets.VIDEO_CUTTER_DEST}
     memorySize: 10240
     timeout: 900
     environment:
@@ -44,3 +43,32 @@ functions:
       TARGET_ROOT_FOLDER: ${self:custom.secrets.VIDEO_CUTTER_TARGET_ROOT_FOLDER}
     layers:
       - ${self:custom.secrets.VIDEO_CUTTER_LAYER}
+
+  swing-cutter:
+    handler: swing_cutter_handler.lambda_handler
+    package:
+      include:
+        - swing_cutter_handler.py
+        - swing_cutter.py
+        - yolov4-tiny.cfg
+        - yolov4-tiny.weights
+        - coco.names
+    events:
+      - s3:
+          bucket: ${self:custom.secrets.SWING_CUTTER_EVENT_BUCKET}
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: clips/
+          existing: true
+    destinations:
+      onSuccess: ${self:custom.secrets.SWING_CUTTER_DEST}
+    memorySize: 10240
+    timeout: 900
+    environment:
+      ACCESS_KEY_ID: ${self:custom.secrets.ACCESS_KEY_ID}
+      SECRET_ACCESS_KEY: ${self:custom.secrets.SECRET_ACCESS_KEY}
+      TARGET_BUCKET: ${self:custom.secrets.SWING_CUTTER_TARGET_BUCKET}
+      META_FOLDER: ${self:custom.secrets.SWING_CUTTER_META_FOLDER}
+      MEDIA_CONVERT_ROLE: ${self:custom.secrets.MEDIA_CONVERT_ROLE}
+    layers:
+      - ${self:custom.secrets.SWING_CUTTER_LAYER}

@@ -2,6 +2,7 @@ import boto3
 from swing_cutter import cut_swings
 import os.path
 import json
+from os import environ
 
 # env vars
 if 'ACCESS_KEY_ID' in environ:
@@ -36,6 +37,7 @@ def lambda_handler(event, context):
     meta_sub_path = "/".join(file_paths[1:len(file_paths)-1])
     meta_key = '{}/{}/{}.txt'.format(META_FOLDER, meta_sub_path, src_file_nm)
     meta_dl_path = '{}/{}.{}'.format(DL_PATH, src_file_nm, "txt")
+    s3 = boto3.client('s3')
     s3.download_file(
         bucket_nm,
         meta_key,
@@ -63,36 +65,34 @@ def lambda_handler(event, context):
     outputs = []
     for swing in swing_data:
         # upload video
-        video_key = '{}/{}/{}'.format(user_id, upload_id, '{}.mp4'.format(swing['name']))
+        video_key = '{}/{}/{}'.format(user_id, upload_id, '{}.mp4'.format(swing['swing_name']))
         upload_file(swing['video_path'], video_key)
         transcode_video(video_key, video_key)
         os.remove(swing['video_path'])
 
         # upload gif
-        gif_key = '{}/{}/{}'.format(user_id, upload_id, '{}.gif'.format(swing['name']))
+        gif_key = '{}/{}/{}'.format(user_id, upload_id, '{}.gif'.format(swing['swing_name']))
         upload_file(swing['gif_path'], gif_key)
         os.remove(swing['gif_path'])
 
         # upload jpg
-        jpg_key = '{}/{}/{}'.format(user_id, upload_id, '{}.jpg'.format(swing['name']))
+        jpg_key = '{}/{}/{}'.format(user_id, upload_id, '{}.jpg'.format(swing['swing_name']))
         upload_file(swing['jpg_path'], jpg_key)
         os.remove(swing['jpg_path'])
 
         # write json meta data
-        swing_frames = swing['end_frame']-swing['start_frame']
-        timestamp = clip_num * clip_len + round(swing_frames / FPS)
-        txt_path = '{}/{}.txt'.format(WR_PATH, swing['name'])
+        txt_path = '{}/{}.txt'.format(WR_PATH, swing['swing_name'])
         with open(txt_path, 'w') as txt_file:
             json.dump({
-                'timestamp': timestamp,
-                'frames': swing_frames,
+                'timestamp': clip_num * clip_len + round(swing['start_frame'] / FPS),
+                'frames': swing['end_frame']-swing['start_frame'],
                 'swing': swing['swing_num'],
                 'clip': clip_num,
                 'uploadKey': upload_id,
             }, txt_file)
 
         # upload metadata
-        txt_key = '{}/{}/{}'.format(user_id, upload_id, '{}.txt'.format(swing['name']))
+        txt_key = '{}/{}/{}'.format(user_id, upload_id, '{}.txt'.format(swing['swing_name']))
         upload_file(txt_path, txt_key)
         os.remove(txt_path)
 
@@ -124,6 +124,8 @@ def upload_file(src_path, target_key):
         src_path, TARGET_BUCKET, target_key)
 
 def transcode_video(src_key, target_key):
+    mediaconvert_client = boto3.client(
+    'mediaconvert', endpoint_url='https://vasjpylpa.mediaconvert-fips.us-east-1.amazonaws.com')
     job_obj = {
         "Role": MEDIA_CONVERT_ROLE,
         "Settings": {

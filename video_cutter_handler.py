@@ -6,8 +6,6 @@ from os import environ
 from os import listdir
 from os import path
 
-from contact_sound_detector import detect_contacts
-
 downloadPath = '/tmp'
 writePath = '/tmp'
 
@@ -92,8 +90,8 @@ def lambda_handler(event, context):
         startClip = CLIP_LENGTH_SECS*clipNum
         endClip = CLIP_LENGTH_SECS*(clipNum+1)
         clip = srcVideo.subclip(startClip, endClip)
-        videoFilename = '{}/{}_clip_{}.mp4'.format(writePath, fileName, clipNum)
-        clip.write_videofile(videoFilename, audio=False)
+        clipPath = '{}/{}_clip_{}.mp4'.format(writePath, fileName, clipNum)
+        clip.write_videofile(clipPath, audio=False)
 
         # write video to s3
         targetKey = '{}/{}/{}/{}_clip_{}.mp4'.format(
@@ -101,12 +99,6 @@ def lambda_handler(event, context):
         print(targetKey)
         s3Session.meta.client.upload_file(
             clipPath, TARGET_BUCKET, targetKey)
-
-        # clip audio file
-        audioFilename = '{}/{}_clip_{}.mp3'.format(writePath, fileName, clipNum)
-        clip.audio.write_audiofile(audioFilename)
-        contacts = detect_contacts(audioFilename)
-        print(contacts)
 
         # save meta to json file
         metaPath = '{}/{}_clip_{}.txt'.format(writePath, fileName, clipNum)
@@ -121,7 +113,6 @@ def lambda_handler(event, context):
             "endSec": endClip,
             "userId": userId,
             "uploadId": uploadId,
-            "contacts": contacts,
         }
         with open(metaPath, 'w') as outfile:
             json.dump(clipMeta, outfile)
