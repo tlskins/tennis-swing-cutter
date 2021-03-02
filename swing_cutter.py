@@ -3,8 +3,7 @@ import cv2
 import datetime
 import numpy as np
 import sys
-
-np.random.seed(42)
+import imageio
 
 MEDIAN_FRAMES = 90
 SWING_GROUP_BUFFER = 30
@@ -19,8 +18,6 @@ NMS_THRESHOLD = 0.4
 YOLO_WEIGHTS_PATH = './yolov4-tiny.weights'
 YOLO_CONFIGS_PATH = './yolov4-tiny.cfg'
 COCO_NAMES_PATH = './coco.names'
-DL_PATH = '/tmp'
-WR_PATH = '/tmp'
 
 def cut_swings(src_video_path, write_path, src_nm):
     t1 = datetime.datetime.now()
@@ -34,7 +31,7 @@ def cut_swings(src_video_path, write_path, src_nm):
     print('init yolo...')
     model, class_names = init_yolo()
 
-    # get frames with swings
+    print('getting frames with swings...')
     frames = []
     frame_num = 0
     while frame_num < total_frames-1:
@@ -47,7 +44,7 @@ def cut_swings(src_video_path, write_path, src_nm):
         if detect_swing(frame, hsv_med_frame):
             frames.append(frame_num)
 
-    # group swing frames
+    print('grouping swing frames...')
     swing_frames = []
     last_frame = frames[0]
     curr_frames = [last_frame]
@@ -58,7 +55,7 @@ def cut_swings(src_video_path, write_path, src_nm):
         curr_frames.append(frame_num)
         last_frame = frame_num
 
-    # write swings
+    print('writing swings...')
     swing_num = 1
     last_cut_frame = 0
     outputs = []
@@ -78,29 +75,42 @@ def cut_swings(src_video_path, write_path, src_nm):
         if person_box is None or contour_box is None or not boxes_intersect(person_box, contour_box):
             continue
 
-        # initialize for output writer
+        # initialize for output writers
         st_frame_num = contact_frame_num - PRE_STRIKE_FRAMES + 1
         end_frame_num = contact_frame_num + POST_STRIKE_FRAMES
         minX, minY, maxX, maxY = calc_crop(person_box, frame_w, frame_h)
-        out_filename = '{}/{}_swing_{}.mp4'.format(write_path, src_nm, swing_num)
-        writer = cv2.VideoWriter(out_filename, cv2.VideoWriter_fourcc(*"MP4V"), FPS, (maxX-minX, maxY-minY))
+        swing_name = '{}_swing_{}'.format(src_nm, swing_num)
+
+        gif_imgs = []
+        gif_path = '{}/{}.gif'.format(write_path, swing_name)
+        video_path = '{}/{}.mp4'.format(write_path, swing_name)
+        writer = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*"MP4V"), FPS, (maxX-minX, maxY-minY))
 
         frame_num = st_frame_num
         video_stream.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
         while frame_num <= end_frame_num:
             ret, frame = video_stream.read()
-            frame = frame[minY:maxY, minX:maxX, :]
-            writer.write(frame)
+            crop_frame = frame[minY:maxY, minX:maxX, :]
+            writer.write(crop_frame)
+            gif_imgs.append(cv2.cvtColor(crop_frame, cv2.COLOR_BGR2RGB))
             frame_num += 1
 
-        last_cut_frame = frame_num
+        # save jpg and gifs
+        jpg_path = '{}/{}.jpg'.format(write_path, swing_name)
+        imageio.imsave(jpg_path, cv2.cvtColor(contact_frame, cv2.COLOR_BGR2RGB))
+        imageio.mimsave(gif_path, gif_imgs, fps=35)
+
         outputs.append({
-            "path": out_filename,
-            "swing": swing_num,
+            "video_path": video_path,
+            "gif_path": gif_path,
+            "jpg_path": jpg_path,
+            "swing_name": swing_name,
+            "swing_num": swing_num,
             "start_frame": st_frame_num,
             "end_frame": end_frame_num,
         })
         swing_num += 1
+        last_cut_frame = frame_num
         writer.release()
 
     t2 = datetime.datetime.now()
@@ -124,6 +134,7 @@ def init_yolo():
     return model, class_names
 
 def calc_median_frame(video_stream):
+    np.random.seed(42)
     frameIds = video_stream.get(cv2.CAP_PROP_FRAME_COUNT) * \
         np.random.uniform(size=MEDIAN_FRAMES)
     frames = []

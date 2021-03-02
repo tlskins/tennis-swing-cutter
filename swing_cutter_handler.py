@@ -1,5 +1,7 @@
 import boto3
 from swing_cutter import cut_swings
+import os.path
+import json
 
 # env vars
 if 'ACCESS_KEY_ID' in environ:
@@ -16,22 +18,9 @@ else:
     META_FOLDER = settings.META_FOLDER
     MEDIA_CONVERT_ROLE = settings.MEDIA_CONVERT_ROLE
 
-MEDIAN_FRAMES = 90
-SWING_GROUP_BUFFER = 30
-FPS = 30
-PRE_STRIKE_FRAMES = 30
-POST_STRIKE_FRAMES = 30
-CUT_WIDTH = 1066
-CUT_HEIGHT = 600
-# yolo
-CONFIDENCE_THRESHOLD = 0.2
-NMS_THRESHOLD = 0.4
-YOLO_WEIGHTS_PATH = './models/yolov4-tiny.weights'
-YOLO_CONFIGS_PATH = './models/yolov4-tiny.cfg'
-COCO_NAMES_PATH = './models/coco.names'
 DL_PATH = '/tmp'
 WR_PATH = '/tmp'
-
+FPS = 30
 
 def lambda_handler(event, context):
     data_ret = event['Records'][0]['s3']
@@ -68,7 +57,51 @@ def lambda_handler(event, context):
     )
 
     # cut swing videos
-    outputs = cut_swings(file_dl_path, WR_PATH, src_file_nm)
+    swing_data = cut_swings(file_dl_path, WR_PATH, src_file_nm)
+
+    # upload videos and metadata
+    outputs = []
+    for swing in swing_data:
+        # upload video
+        video_key = '{}/{}/{}'.format(user_id, upload_id, '{}.mp4'.format(swing['name']))
+        upload_file(swing['video_path'], video_key)
+        transcode_video(video_key, video_key)
+        os.remove(swing['video_path'])
+
+        # upload gif
+        gif_key = '{}/{}/{}'.format(user_id, upload_id, '{}.gif'.format(swing['name']))
+        upload_file(swing['gif_path'], gif_key)
+        os.remove(swing['gif_path'])
+
+        # upload jpg
+        jpg_key = '{}/{}/{}'.format(user_id, upload_id, '{}.jpg'.format(swing['name']))
+        upload_file(swing['jpg_path'], jpg_key)
+        os.remove(swing['jpg_path'])
+
+        # write json meta data
+        swing_frames = swing['end_frame']-swing['start_frame']
+        timestamp = clip_num * clip_len + round(swing_frames / FPS)
+        txt_path = '{}/{}.txt'.format(WR_PATH, swing['name'])
+        with open(txt_path, 'w') as txt_file:
+            json.dump({
+                'timestamp': timestamp,
+                'frames': swing_frames,
+                'swing': swing['swing_num'],
+                'clip': clip_num,
+                'uploadKey': upload_id,
+            }, txt_file)
+
+        # upload metadata
+        txt_key = '{}/{}/{}'.format(user_id, upload_id, '{}.txt'.format(swing['name']))
+        upload_file(txt_path, txt_key)
+        os.remove(txt_path)
+
+        outputs.append({
+            'video': video_key,
+            'gif': gif_key,
+            'jpg': jpg_key,
+            'txt': txt_key,
+        })
 
     return {
         "statusCode": 200,
@@ -82,13 +115,13 @@ def lambda_handler(event, context):
         },
     }
 
-def upload_file(sourcePath, target_key):
+def upload_file(src_path, target_key):
     s3_session = boto3.session.Session(
         aws_access_key_id=ACCESS_KEY_ID,
         aws_secret_access_key=SECRET_ACCESS_KEY
     ).resource('s3')
     s3_session.meta.client.upload_file(
-        sourcePath, TARGET_BUCKET, target_key)
+        src_path, TARGET_BUCKET, target_key)
 
 def transcode_video(src_key, target_key):
     job_obj = {
