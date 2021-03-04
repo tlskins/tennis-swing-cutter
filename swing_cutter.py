@@ -5,7 +5,7 @@ import numpy as np
 import sys
 import imageio
 
-MEDIAN_FRAMES = 90
+MEDIAN_FRAMES = 200
 SWING_GROUP_BUFFER = 45
 FPS = 30
 PRE_STRIKE_FRAMES = 30
