@@ -2,12 +2,12 @@ service: tennis-swings
 frameworkVersion: "2"
 
 custom:
-  secrets: ${file(config.dev.yml)}
+  secrets: ${file(config.staging.yml)}
 
 provider:
   name: aws
   runtime: python3.8
-  stage: dev
+  stage: ${self:custom.secrets.ENV}
   region: us-east-1
   role: ${self:custom.secrets.ROLE_NAME}
 
