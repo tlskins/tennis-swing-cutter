@@ -212,7 +212,7 @@ def calc_median_frame(video_stream, total_frames):
     frame_nums = []
     while frame_num <= total_frames - 5 * FPS:
         frame_nums.append(frame_num)
-        frame_num += round(0.5 * FPS)
+        frame_num += round(1 * FPS)
 
     frames = []
     for fnum in frame_nums:

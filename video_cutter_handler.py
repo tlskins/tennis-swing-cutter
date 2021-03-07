@@ -76,8 +76,7 @@ def lambda_handler(event, context):
     print('duration {}'.format(srcDuration))
 
     clips = math.ceil(srcVideo.duration / CLIP_LENGTH_SECS)
-    if clips > MAX_CLIPS:
-        clips = MAX_CLIPS
+    clips = MAX_CLIPS if clips > MAX_CLIPS else clips
     print('clips {}'.format(clips))
 
     s3Session = boto3.session.Session(
@@ -91,6 +90,7 @@ def lambda_handler(event, context):
         # clip video locally
         startClip = CLIP_LENGTH_SECS*clipNum
         endClip = CLIP_LENGTH_SECS*(clipNum+1)
+        endClip = math.floor(startClip + (srcVideo.duration % CLIP_LENGTH_SECS)) if clipNum == clips-1 else endClip
         clip = srcVideo.subclip(startClip, endClip)
         clipPath = '{}/{}_clip_{}.mp4'.format(writePath, fileName, clipNum)
         clip.write_videofile(clipPath, audio=False)

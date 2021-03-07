@@ -50,6 +50,7 @@ def lambda_handler(event, context):
         clip_len = int(meta["endSec"]) - int(meta["startSec"])
         clip_num = int(meta["number"])
         sound_frames = meta["soundFrames"]
+    print("processing {} {}".format(upload_id, clip_num))
 
     # download source video
     file_dl_path = '{}/{}.{}'.format(DL_PATH, src_file_nm, file_ext)
