@@ -22,7 +22,6 @@ functions:
     package:
       include:
         - video_cutter_handler.py
-        - pitch_detector.py
     events:
       - s3:
           bucket: ${self:custom.secrets.VIDEO_CUTTER_EVENT_BUCKET}
@@ -34,7 +33,7 @@ functions:
       onSuccess: ${self:custom.secrets.VIDEO_CUTTER_DEST}
     memorySize: 10240
     timeout: 900
-    maximumRetryAttempts: 1
+    maximumRetryAttempts: 0
     environment:
       ACCESS_KEY_ID: ${self:custom.secrets.ACCESS_KEY_ID}
       SECRET_ACCESS_KEY: ${self:custom.secrets.SECRET_ACCESS_KEY}
@@ -43,6 +42,7 @@ functions:
       TARGET_BUCKET: ${self:custom.secrets.VIDEO_CUTTER_TARGET_BUCKET}
       TARGET_META_FOLDER: ${self:custom.secrets.VIDEO_CUTTER_TARGET_META_FOLDER}
       TARGET_ROOT_FOLDER: ${self:custom.secrets.VIDEO_CUTTER_TARGET_ROOT_FOLDER}
+      TARGET_AUDIO_FOLDER: ${self:custom.secrets.VIDEO_CUTTER_TARGET_AUDIO_FOLDER}
     layers:
       - ${self:custom.secrets.VIDEO_CUTTER_LAYER}
 
@@ -55,18 +55,20 @@ functions:
         - yolov4-tiny.cfg
         - yolov4-tiny.weights
         - coco.names
+        - pitch_detector.py
     events:
       - s3:
           bucket: ${self:custom.secrets.SWING_CUTTER_EVENT_BUCKET}
           event: s3:ObjectCreated:*
           rules:
             - prefix: clips/
+            - suffix: .mp4
           existing: true
     destinations:
       onSuccess: ${self:custom.secrets.SWING_CUTTER_DEST}
     memorySize: 10240
     timeout: 900
-    maximumRetryAttempts: 1
+    maximumRetryAttempts: 0
     environment:
       ACCESS_KEY_ID: ${self:custom.secrets.ACCESS_KEY_ID}
       SECRET_ACCESS_KEY: ${self:custom.secrets.SECRET_ACCESS_KEY}

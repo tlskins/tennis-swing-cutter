@@ -2,6 +2,7 @@ import sys
 from aubio import source
 from aubio import pitch as get_pitch
 import numpy as num
+import datetime
 
 MIN_SWING_BUFF = 1.5  # maybe 1.0 for wall and 1.25 for rallying
 MIN_CONTACT_PITCH = 50
@@ -10,7 +11,8 @@ SWING_WINDOW = 0.75
 FPS = 30
 
 def detect_pitches(filename):
-    print(filename)
+    print("getting sound frames... ", filename)
+    t1 = datetime.datetime.now()
     downsample = 1
     samplerate = 44100 // downsample
     win_s = 4096 // downsample  # fft size
@@ -46,6 +48,8 @@ def detect_pitches(filename):
 
         if read < hop_s:
             break
+    print('calc sound frames: {} seconds'.format((datetime.datetime.now()-t1).seconds))
+
 
     return frames
 

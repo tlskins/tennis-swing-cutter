@@ -3,20 +3,19 @@ from swing_cutter import cut_swings
 import os.path
 import json
 from os import environ
+from pitch_detector import detect_pitches
 
 # env vars
 if 'ACCESS_KEY_ID' in environ:
     ACCESS_KEY_ID = environ['ACCESS_KEY_ID']
     SECRET_ACCESS_KEY = environ['SECRET_ACCESS_KEY']
     TARGET_BUCKET = environ['TARGET_BUCKET']
-    META_FOLDER = environ['META_FOLDER']
     MEDIA_CONVERT_ROLE = environ['MEDIA_CONVERT_ROLE']
 else:
     import settings
     ACCESS_KEY_ID = settings.ACCESS_KEY_ID
     SECRET_ACCESS_KEY = settings.SECRET_ACCESS_KEY
     TARGET_BUCKET = settings.TARGET_BUCKET
-    META_FOLDER = settings.META_FOLDER
     MEDIA_CONVERT_ROLE = settings.MEDIA_CONVERT_ROLE
 
 DL_PATH = '/tmp'
@@ -34,8 +33,7 @@ def lambda_handler(event, context):
     file_ext = full_file_nm[ext_idx+1:]
 
     # download metadata
-    meta_sub_path = "/".join(file_paths[1:len(file_paths)-1])
-    meta_key = '{}/{}/{}.txt'.format(META_FOLDER, meta_sub_path, src_file_nm)
+    meta_key = file_key[:-3]+"txt"
     meta_dl_path = '{}/{}.{}'.format(DL_PATH, src_file_nm, "txt")
     s3 = boto3.client('s3')
     s3.download_file(
@@ -49,16 +47,25 @@ def lambda_handler(event, context):
         upload_id = meta["uploadId"]
         clip_len = int(meta["endSec"]) - int(meta["startSec"])
         clip_num = int(meta["number"])
-        sound_frames = meta["soundFrames"]
+        audio_key = meta["audioPath"]
     print("processing {} {}".format(upload_id, clip_num))
 
-    # download source video
+    # download source video and audio
     file_dl_path = '{}/{}.{}'.format(DL_PATH, src_file_nm, file_ext)
     s3.download_file(
         bucket_nm,
         file_key,
         file_dl_path,
     )
+    audio_dl_path = '{}/{}.{}'.format(DL_PATH, src_file_nm, "wav")
+    s3.download_file(
+        bucket_nm,
+        audio_key,
+        audio_dl_path,
+    )
+
+    # get sound frames
+    sound_frames = detect_pitches(audio_dl_path)
 
     # cut swing videos
     swing_data = cut_swings(file_dl_path, WR_PATH, src_file_nm, sound_frames)

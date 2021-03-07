@@ -25,7 +25,7 @@ COCO_NAMES_PATH = './coco.names'
 
 
 def cut_swings(src_video_path, write_path, src_nm, sound_frames):
-    print('calc video stats...')
+    print('calc video stats {}...'.format(src_video_path))
     t1 = datetime.datetime.now()
     video_stream = cv2.VideoCapture(src_video_path)
     total_frames = video_stream.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -164,6 +164,9 @@ def cut_swings(src_video_path, write_path, src_nm, sound_frames):
         video_stream.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
         while frame_num <= end_frame_num:
             _, frame = video_stream.read()
+            if frame is None:
+                break
+            
             crop_frame = frame[minY:maxY, minX:maxX, :]
             writer.write(crop_frame)
             # gif_imgs.append(cv2.cvtColor(crop_frame, cv2.COLOR_BGR2RGB))
@@ -208,17 +211,21 @@ def init_yolo():
 
 
 def calc_median_frame(video_stream, total_frames):
+    print('calc_median_frame total_frames {}'.format(total_frames))
     frame_num = 5 * FPS
     frame_nums = []
     while frame_num <= total_frames - 5 * FPS:
         frame_nums.append(frame_num)
         frame_num += round(1 * FPS)
+    print('frame_nums {}'.format(frame_nums))
 
     frames = []
     for fnum in frame_nums:
         video_stream.set(cv2.CAP_PROP_POS_FRAMES, fnum)
         _, frame = video_stream.read()
         frames.append(frame)
+
+    print('getting median frames of {} frames...'.format(len(frames)))
 
     video_stream.set(cv2.CAP_PROP_POS_FRAMES, 0)
     med_frame = np.median(frames, axis=0).astype(dtype=np.uint8)

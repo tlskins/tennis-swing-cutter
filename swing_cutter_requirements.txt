@@ -1,0 +1,4 @@
+opencv-python==4.4.0.42
+imageio==2.9.0
+Pillow==8.0.1
+aubio==0.4.9

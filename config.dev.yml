@@ -4,9 +4,8 @@ SECRET_ACCESS_KEY: "T+OB79u5QlQ0pupFZlo+TK9ILeWp+zlAsDFYsvz+"
 ROLE_NAME: arn:aws:iam::775992663949:role/lambda-swing-detector
 
 CLIP_LENGTH_SECS: 60
-MAX_CLIPS: 9
+MAX_CLIPS: 15
 VIDEO_CUTTER_TARGET_BUCKET: tennis-swings
-VIDEO_CUTTER_TARGET_META_FOLDER: clips_meta
 VIDEO_CUTTER_TARGET_ROOT_FOLDER: clips
 VIDEO_CUTTER_EVENT_BUCKET: tennis-swings
 VIDEO_CUTTER_LAYER: arn:aws:lambda:us-east-1:775992663949:layer:moviepy-aubio-layer:1
@@ -15,6 +14,5 @@ VIDEO_CUTTER_DEST: arn:aws:lambda:us-east-1:775992663949:function:tennis-communi
 SWING_CUTTER_EVENT_BUCKET: tennis-swings
 SWING_CUTTER_DEST: arn:aws:lambda:us-east-1:775992663949:function:tennis-community-api-service-dev-update_upload_swings
 SWING_CUTTER_TARGET_BUCKET: tennis-swings
-SWING_CUTTER_META_FOLDER: clips_meta
-SWING_CUTTER_LAYER: arn:aws:lambda:us-east-1:775992663949:layer:opencv_python3_8_numpy:6
+SWING_CUTTER_LAYER: arn:aws:lambda:us-east-1:775992663949:layer:opencv_imgio_aubio_layer:3
 MEDIA_CONVERT_ROLE: arn:aws:iam::775992663949:role/service-role/MediaConvert_Default_Role

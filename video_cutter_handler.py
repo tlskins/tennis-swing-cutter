@@ -5,12 +5,10 @@ import json
 from os import environ
 from os import listdir
 from os import path
-from pitch_detector import detect_pitches
 
-
+MIN_CLIP_LEN = 15
 downloadPath = '/tmp'
 writePath = '/tmp'
-
 
 def lambda_handler(event, context):
     dataRetrieved = event['Records'][0]['s3']
@@ -37,7 +35,6 @@ def lambda_handler(event, context):
         SECRET_ACCESS_KEY = environ['SECRET_ACCESS_KEY']
         TARGET_BUCKET = environ['TARGET_BUCKET']
         TARGET_ROOT_FOLDER = environ['TARGET_ROOT_FOLDER']
-        TARGET_META_FOLDER = environ['TARGET_META_FOLDER']
         CLIP_LENGTH_SECS = int(environ['CLIP_LENGTH_SECS'])
         MAX_CLIPS = int(environ['MAX_CLIPS'])
     else:
@@ -46,7 +43,6 @@ def lambda_handler(event, context):
         SECRET_ACCESS_KEY = settings.SECRET_ACCESS_KEY
         TARGET_BUCKET = settings.TARGET_BUCKET
         TARGET_ROOT_FOLDER = settings.TARGET_ROOT_FOLDER
-        TARGET_META_FOLDER = settings.TARGET_META_FOLDER
         CLIP_LENGTH_SECS = int(settings.CLIP_LENGTH_SECS)
         MAX_CLIPS = int(settings.MAX_CLIPS)
 
@@ -86,11 +82,15 @@ def lambda_handler(event, context):
 
     outputs = []
     for clipNum in range(0, clips):
-        print('processing clip {}'.format(clipNum))
         # clip video locally
         startClip = CLIP_LENGTH_SECS*clipNum
         endClip = CLIP_LENGTH_SECS*(clipNum+1)
         endClip = math.floor(startClip + (srcVideo.duration % CLIP_LENGTH_SECS)) if clipNum == clips-1 else endClip
+        if endClip - startClip < MIN_CLIP_LEN:
+            break
+
+        print('processing clip {} start {} end {}'.format(clipNum, startClip, endClip))
+
         clip = srcVideo.subclip(startClip, endClip)
         clipPath = '{}/{}_clip_{}.mp4'.format(writePath, fileName, clipNum)
         clip.write_videofile(clipPath, audio=False)
@@ -101,22 +101,23 @@ def lambda_handler(event, context):
         # clip audio locally
         audioPath = '{}/{}_clip_{}.wav'.format(writePath, fileName, clipNum)
         clip.audio.write_audiofile(audioPath, codec='pcm_s16le')
-        soundFrames = detect_pitches(audioPath)
+        audioTargetKey = '{}/{}/{}/{}_clip_{}.wav'.format(
+            TARGET_ROOT_FOLDER, userId, uploadId, fileName, clipNum)
 
         # save meta to json file
         metaPath = '{}/{}_clip_{}.txt'.format(writePath, fileName, clipNum)
         metaTargetKey = '{}/{}/{}/{}_clip_{}.txt'.format(
-            TARGET_META_FOLDER, userId, uploadId, fileName, clipNum)
+            TARGET_ROOT_FOLDER, userId, uploadId, fileName, clipNum)
         clipMeta = {
             "path": vidTargetKey,
             "metaPath": metaTargetKey,
+            "audioPath": audioTargetKey,
             "fileName": fileName,
             "number": clipNum,
             "startSec": startClip,
             "endSec": endClip,
             "userId": userId,
             "uploadId": uploadId,
-            "soundFrames": soundFrames,
         }
         with open(metaPath, 'w') as outfile:
             json.dump(clipMeta, outfile)
@@ -126,6 +127,8 @@ def lambda_handler(event, context):
             metaPath, TARGET_BUCKET, metaTargetKey)
         s3Session.meta.client.upload_file(
             clipPath, TARGET_BUCKET, vidTargetKey)
+        s3Session.meta.client.upload_file(
+            audioPath, TARGET_BUCKET, audioTargetKey)
         os.remove(clipPath)
         os.remove(audioPath)
         os.remove(metaPath)
