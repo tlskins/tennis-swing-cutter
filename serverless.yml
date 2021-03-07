@@ -2,7 +2,7 @@ service: tennis-swings
 frameworkVersion: "2"
 
 custom:
-  secrets: ${file(config.staging.yml)}
+  secrets: ${file(config.dev.yml)}
 
 provider:
   name: aws
@@ -22,6 +22,7 @@ functions:
     package:
       include:
         - video_cutter_handler.py
+        - pitch_detector.py
     events:
       - s3:
           bucket: ${self:custom.secrets.VIDEO_CUTTER_EVENT_BUCKET}
@@ -33,6 +34,7 @@ functions:
       onSuccess: ${self:custom.secrets.VIDEO_CUTTER_DEST}
     memorySize: 10240
     timeout: 900
+    maximumRetryAttempts: 1
     environment:
       ACCESS_KEY_ID: ${self:custom.secrets.ACCESS_KEY_ID}
       SECRET_ACCESS_KEY: ${self:custom.secrets.SECRET_ACCESS_KEY}
@@ -64,6 +66,7 @@ functions:
       onSuccess: ${self:custom.secrets.SWING_CUTTER_DEST}
     memorySize: 10240
     timeout: 900
+    maximumRetryAttempts: 1
     environment:
       ACCESS_KEY_ID: ${self:custom.secrets.ACCESS_KEY_ID}
       SECRET_ACCESS_KEY: ${self:custom.secrets.SECRET_ACCESS_KEY}

@@ -5,6 +5,8 @@ import json
 from os import environ
 from os import listdir
 from os import path
+from pitch_detector import detect_pitches
+
 
 downloadPath = '/tmp'
 writePath = '/tmp'
@@ -92,20 +94,21 @@ def lambda_handler(event, context):
         clip = srcVideo.subclip(startClip, endClip)
         clipPath = '{}/{}_clip_{}.mp4'.format(writePath, fileName, clipNum)
         clip.write_videofile(clipPath, audio=False)
-
-        # write video to s3
-        targetKey = '{}/{}/{}/{}_clip_{}.mp4'.format(
+        vidTargetKey = '{}/{}/{}/{}_clip_{}.mp4'.format(
             TARGET_ROOT_FOLDER, userId, uploadId, fileName, clipNum)
-        print(targetKey)
-        s3Session.meta.client.upload_file(
-            clipPath, TARGET_BUCKET, targetKey)
+        print(vidTargetKey)
+
+        # clip audio locally
+        audioPath = '{}/{}_clip_{}.wav'.format(writePath, fileName, clipNum)
+        clip.audio.write_audiofile(audioPath, codec='pcm_s16le')
+        soundFrames = detect_pitches(audioPath)
 
         # save meta to json file
         metaPath = '{}/{}_clip_{}.txt'.format(writePath, fileName, clipNum)
         metaTargetKey = '{}/{}/{}/{}_clip_{}.txt'.format(
             TARGET_META_FOLDER, userId, uploadId, fileName, clipNum)
         clipMeta = {
-            "path": targetKey,
+            "path": vidTargetKey,
             "metaPath": metaTargetKey,
             "fileName": fileName,
             "number": clipNum,
@@ -113,11 +116,20 @@ def lambda_handler(event, context):
             "endSec": endClip,
             "userId": userId,
             "uploadId": uploadId,
+            "soundFrames": soundFrames,
         }
         with open(metaPath, 'w') as outfile:
             json.dump(clipMeta, outfile)
+
+        # write meta and video to s3
         s3Session.meta.client.upload_file(
             metaPath, TARGET_BUCKET, metaTargetKey)
+        s3Session.meta.client.upload_file(
+            clipPath, TARGET_BUCKET, vidTargetKey)
+        os.remove(clipPath)
+        os.remove(audioPath)
+        os.remove(metaPath)
+
         outputs.append(clipMeta)
 
     return {

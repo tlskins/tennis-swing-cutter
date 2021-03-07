@@ -49,6 +49,7 @@ def lambda_handler(event, context):
         upload_id = meta["uploadId"]
         clip_len = int(meta["endSec"]) - int(meta["startSec"])
         clip_num = int(meta["number"])
+        sound_frames = meta["soundFrames"]
 
     # download source video
     file_dl_path = '{}/{}.{}'.format(DL_PATH, src_file_nm, file_ext)
@@ -59,7 +60,7 @@ def lambda_handler(event, context):
     )
 
     # cut swing videos
-    swing_data = cut_swings(file_dl_path, WR_PATH, src_file_nm)
+    swing_data = cut_swings(file_dl_path, WR_PATH, src_file_nm, sound_frames)
 
     # upload videos and metadata
     outputs = []
