@@ -72,9 +72,9 @@ def lambda_handler(event, context):
         os.remove(swing['video_path'])
 
         # upload gif
-        gif_key = '{}/{}/{}'.format(user_id, upload_id, '{}.gif'.format(swing['swing_name']))
-        upload_file(swing['gif_path'], gif_key)
-        os.remove(swing['gif_path'])
+        # gif_key = '{}/{}/{}'.format(user_id, upload_id, '{}.gif'.format(swing['swing_name']))
+        # upload_file(swing['gif_path'], gif_key)
+        # os.remove(swing['gif_path'])
 
         # upload jpg
         jpg_key = '{}/{}/{}'.format(user_id, upload_id, '{}.jpg'.format(swing['swing_name']))
@@ -99,7 +99,7 @@ def lambda_handler(event, context):
 
         outputs.append({
             'video': video_key,
-            'gif': gif_key,
+            'gif': "",
             'jpg': jpg_key,
             'txt': txt_key,
         })

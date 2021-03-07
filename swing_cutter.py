@@ -25,18 +25,26 @@ COCO_NAMES_PATH = './coco.names'
 
 
 def cut_swings(src_video_path, write_path, src_nm, sound_frames):
+    print('calc video stats...')
     t1 = datetime.datetime.now()
     video_stream = cv2.VideoCapture(src_video_path)
     total_frames = video_stream.get(cv2.CAP_PROP_FRAME_COUNT)
     frame_w = round(video_stream.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_h = round(video_stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    print('calc video stats: {} seconds'.format((datetime.datetime.now()-t1).seconds))
 
     print('calc median frames...')
+    t1 = datetime.datetime.now()
     hsv_med_frame = calc_median_frame(video_stream, total_frames)
+    print('calc median frames: {} seconds'.format((datetime.datetime.now()-t1).seconds))
+    
     print('init yolo...')
+    t1 = datetime.datetime.now()
     model, class_names = init_yolo()
+    print('init yolo: {} seconds'.format((datetime.datetime.now()-t1).seconds))
 
     print('getting frames with person swings...')
+    t1 = datetime.datetime.now()
     swing_frames = []
     swing_body_boxes = []
     frame_num = 0
@@ -54,8 +62,10 @@ def cut_swings(src_video_path, write_path, src_nm, sound_frames):
         swing_frames.append(frame_num)
         swing_body_boxes.append(swing_body_box)
     print(swing_frames)
+    print('getting frames with person swings: {} seconds'.format((datetime.datetime.now()-t1).seconds))
 
     print('grouping swing frames...')
+    t1 = datetime.datetime.now()
     swing_groups = []
     body_group = {
         'sound_frames': [],
@@ -113,14 +123,14 @@ def cut_swings(src_video_path, write_path, src_nm, sound_frames):
             curr_sound_frame = sound_frames[sound_frame_idx] if sound_frame_idx < len(
                 sound_frames) else -1
     print(swing_groups)
+    print('grouping swing frames: {} seconds'.format((datetime.datetime.now()-t1).seconds))
 
-    print('sorting swings by score...')
-
+    print('sorting and selecting swings...')
+    t1 = datetime.datetime.now()
     def sort_swing_score(group):
         return group['score']
     swing_groups.sort(reverse=True, key=sort_swing_score)
 
-    print('getting best swings...')
     final_swing_groups = []
     while len(swing_groups) > 0:
         sel = swing_groups.pop(0)
@@ -128,13 +138,13 @@ def cut_swings(src_video_path, write_path, src_nm, sound_frames):
         swing_groups[:] = [g for g in swing_groups if not abs(
             sel['contact_frame_num'] - g['contact_frame_num']) < SWING_GROUP_BUFFER]
 
-    print('sorting swings by timestamp...')
-
     def sort_swing_frame(group):
         return group['contact_frame_num']
     final_swing_groups.sort(key=sort_swing_frame)
+    print('sorting and selecting swings: {} seconds'.format((datetime.datetime.now()-t1).seconds))
 
     print('writing swings...')
+    t1 = datetime.datetime.now()
     swing_num = 1
     outputs = []
     for swing_group in final_swing_groups:
@@ -144,8 +154,8 @@ def cut_swings(src_video_path, write_path, src_nm, sound_frames):
         minX, minY, maxX, maxY = calc_crop(swing_group['person_box'], frame_w, frame_h)
         swing_name = '{}_swing_{}'.format(src_nm, swing_num)
 
-        gif_imgs = []
-        gif_path = '{}/{}.gif'.format(write_path, swing_name)
+        # gif_imgs = []
+        # gif_path = '{}/{}.gif'.format(write_path, swing_name)
         video_path = '{}/{}.mp4'.format(write_path, swing_name)
         writer = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(
             *"MP4V"), FPS, (maxX-minX, maxY-minY))
@@ -156,18 +166,18 @@ def cut_swings(src_video_path, write_path, src_nm, sound_frames):
             _, frame = video_stream.read()
             crop_frame = frame[minY:maxY, minX:maxX, :]
             writer.write(crop_frame)
-            gif_imgs.append(cv2.cvtColor(crop_frame, cv2.COLOR_BGR2RGB))
+            # gif_imgs.append(cv2.cvtColor(crop_frame, cv2.COLOR_BGR2RGB))
             frame_num += 1
 
         # save jpg and gifs
         jpg_path = '{}/{}.jpg'.format(write_path, swing_name)
         imageio.imsave(jpg_path, cv2.cvtColor(
             contact_frame, cv2.COLOR_BGR2RGB))
-        imageio.mimsave(gif_path, gif_imgs, fps=35)
+        # imageio.mimsave(gif_path, gif_imgs, fps=35)
 
         outputs.append({
             "video_path": video_path,
-            "gif_path": gif_path,
+            "gif_path": "",
             "jpg_path": jpg_path,
             "swing_name": swing_name,
             "swing_num": swing_num,
@@ -176,10 +186,9 @@ def cut_swings(src_video_path, write_path, src_nm, sound_frames):
         })
         swing_num += 1
         writer.release()
-
-    t2 = datetime.datetime.now()
-    print('processing time {} seconds'.format((t2-t1).seconds))
     video_stream.release()
+    print('writing swings: {} seconds'.format((datetime.datetime.now()-t1).seconds))
+
     return outputs
 
 
