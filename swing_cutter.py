@@ -8,7 +8,7 @@ from itertools import filterfalse
 
 SWING_GROUP_BUFFER = 45
 # leeway between body swing contour frames to still count as a single swing
-SWING_GROUP_LEEWAY = 3
+SWING_GROUP_LEEWAY = 15
 FPS = 30
 PRE_STRIKE_FRAMES = 30
 POST_STRIKE_FRAMES = 30
@@ -24,7 +24,7 @@ YOLO_CONFIGS_PATH = './yolov4-tiny.cfg'
 COCO_NAMES_PATH = './coco.names'
 
 
-def cut_swings(src_video_path, write_path, src_nm, sound_frames):
+def cut_swings(src_video_path, write_path, src_nm, sound_frames, clip_num):
     print('calc video stats {}...'.format(src_video_path))
     t1 = datetime.datetime.now()
     video_stream = cv2.VideoCapture(src_video_path)
@@ -35,7 +35,7 @@ def cut_swings(src_video_path, write_path, src_nm, sound_frames):
 
     print('calc median frames...')
     t1 = datetime.datetime.now()
-    hsv_med_frame = calc_median_frame(video_stream, total_frames)
+    hsv_med_frame = calc_median_frame(video_stream, total_frames, clip_num)
     print('calc median frames: {} seconds'.format((datetime.datetime.now()-t1).seconds))
     
     print('init yolo...')
@@ -166,7 +166,7 @@ def cut_swings(src_video_path, write_path, src_nm, sound_frames):
             _, frame = video_stream.read()
             if frame is None:
                 break
-            
+
             crop_frame = frame[minY:maxY, minX:maxX, :]
             writer.write(crop_frame)
             # gif_imgs.append(cv2.cvtColor(crop_frame, cv2.COLOR_BGR2RGB))
@@ -210,11 +210,11 @@ def init_yolo():
     return model, class_names
 
 
-def calc_median_frame(video_stream, total_frames):
+def calc_median_frame(video_stream, total_frames, clip_num):
     print('calc_median_frame total_frames {}'.format(total_frames))
-    frame_num = 5 * FPS
+    frame_num = 5 * FPS if clip_num == 1 else 1
     frame_nums = []
-    while frame_num <= total_frames - 5 * FPS:
+    while frame_num <= total_frames - 3 * FPS:
         frame_nums.append(frame_num)
         frame_num += round(1 * FPS)
     print('frame_nums {}'.format(frame_nums))

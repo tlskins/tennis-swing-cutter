@@ -68,7 +68,7 @@ def lambda_handler(event, context):
     sound_frames = detect_pitches(audio_dl_path)
 
     # cut swing videos
-    swing_data = cut_swings(file_dl_path, WR_PATH, src_file_nm, sound_frames)
+    swing_data = cut_swings(file_dl_path, WR_PATH, src_file_nm, sound_frames, clip_num)
 
     # upload videos and metadata
     outputs = []

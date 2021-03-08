@@ -126,9 +126,9 @@ def lambda_handler(event, context):
         s3Session.meta.client.upload_file(
             metaPath, TARGET_BUCKET, metaTargetKey)
         s3Session.meta.client.upload_file(
-            clipPath, TARGET_BUCKET, vidTargetKey)
-        s3Session.meta.client.upload_file(
             audioPath, TARGET_BUCKET, audioTargetKey)
+        s3Session.meta.client.upload_file(
+            clipPath, TARGET_BUCKET, vidTargetKey)
         os.remove(clipPath)
         os.remove(audioPath)
         os.remove(metaPath)
