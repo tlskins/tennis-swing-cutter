@@ -23,4 +23,5 @@ var/
 node_modules/
 inputs/
 out/
-config.*.yml
+config.dev.yml
+config.staging.yml
